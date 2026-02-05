@@ -40,6 +40,7 @@ def no_tqdm(monkeypatch, himap_modules):
         return it
 
     monkeypatch.setattr(base, "tqdm", _tqdm)
+    return _tqdm
 
 
 def _subset_reindex(seqs: dict, n_traj: int):

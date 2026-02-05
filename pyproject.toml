@@ -43,6 +43,7 @@ license-files = ["LICENSE"]
 [project.optional-dependencies]
 test = [
   "pytest>=8.0",
+  "pytest-cov>=4.0",
 ]
 
 [tool.setuptools.packages.find]

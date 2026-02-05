@@ -5,7 +5,6 @@ from setuptools import setup, find_packages
 from Cython.Build import cythonize
 import glob
 
-print("DISCOVERED PACKAGES:", find_packages(include=["himap", "himap.*"]))
 # Setting up
 setup(
     # name="himap",

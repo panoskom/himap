@@ -139,7 +139,8 @@ class HSMM:
 
                     elif i == j and j == len(self.tmat[i]) - 2:
                         self.tmat[i, j + 1] = 1
-            # self.tmat[-1, -1] = 1
+            # Make the last state absorbing (stays in itself)
+            self.tmat[-1, -1] = 1
 
         self._dur_init()  # duration
 
@@ -342,7 +343,8 @@ class HSMM:
             sample = self.sample(timesteps)
             _, obs1, states1 = sample
 
-            for j in range(len(states1)):
+            idx = len(states1) - 1  # Default to full length if no decrease found
+            for j in range(len(states1) - 1):
                 if states1[j] > states1[j + 1]:
                     idx = j
                     break
@@ -611,6 +613,7 @@ class HSMM:
         self._check()
 
         # main computations
+        old_score = -np.inf  # Initialize to avoid potential NameError in edge cases
         for itera in range(self.n_iter):
             score = 0
 
@@ -685,7 +688,7 @@ class HSMM:
 
             ############################################################################################################
             # check for loop break
-            if itera > 0 and abs(abs(score) - abs(old_score)) < self.tol:
+            if itera > 0 and (abs(score - old_score) / (1 + abs(old_score))) < self.tol:
                 print(f"\nFIT{self.name}: converged at loop {itera + 1} with score: {score}.")
                 break
             elif itera > 0 and (np.isnan(score) or np.isinf(score)):
@@ -1477,14 +1480,14 @@ class HMM:
 
         create_folders()
 
-        assert n_states >= 2, "number of states (n_states) must be at least 2"
-        # Assertion for n_obs_symbols
-        assert isinstance(n_obs_symbols,
-                          int) and n_obs_symbols > 0, "number of observation symbols must be a positive integer"
-        # Assertion for n_iter
-        assert isinstance(n_iter, int) and n_iter > 0, "number of iterations must be a positive integer"
-        # Assertion for tol
-        assert isinstance(tol, (float, int)) and tol > 0, "tolerance must be a positive float or int"
+        if not n_states >= 2:
+            raise ValueError("number of states (n_states) must be at least 2")
+        if not (isinstance(n_obs_symbols, int) and n_obs_symbols > 0):
+            raise ValueError("number of observation symbols must be a positive integer")
+        if not (isinstance(n_iter, int) and n_iter > 0):
+            raise ValueError("number of iterations must be a positive integer")
+        if not (isinstance(tol, (float, int)) and tol > 0):
+            raise ValueError("tolerance must be a positive float or int")
 
         if len(name) == 0:
             name = f"hmm"
@@ -1640,11 +1643,11 @@ class HMM:
             total_emissions = np.sum(emi, axis=1)
             total_transitions = np.sum(tr, axis=1)
 
-            calc_emi = emi / total_emissions[:, np.newaxis]
-            calc_tr = tr / total_transitions[:, np.newaxis]
-
-            calc_tr[np.isnan(calc_tr)] = 0
-            calc_emi[np.isnan(calc_emi)] = 0
+            # Use epsilon smoothing to maintain valid probability distributions
+            # instead of replacing NaN with 0 which violates row-stochastic property
+            epsilon = 1e-10
+            calc_emi = (emi + epsilon) / (total_emissions[:, np.newaxis] + epsilon * self.n_obs_symbols)
+            calc_tr = (tr + epsilon) / (total_transitions[:, np.newaxis] + epsilon * self.n_states)
 
             score_per_iter.append(score)
             if (abs(score - old_score) / (1 + abs(old_score))) < self.tol and \
@@ -2042,7 +2045,8 @@ class HMM:
                 rul_mean.append(0)
                 rul_upper_bound.append(0)
                 rul_lower_bound.append(0)
-                break
+                # Continue instead of break to process remaining timesteps
+                continue
             else:
                 rul_mean.append(int(rul_value))
                 lower_bound, upper_bound = calculate_cdf(rul_pdf_current, confidence)

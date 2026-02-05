@@ -32,14 +32,14 @@ def plot_multiple_observ(obs, states, num2plot):
     """
     fig_path = os.path.join(os.getcwd(), 'results', 'figures', 'mc_traj.png')
     title = f'Degradation histories with MC sampling\n {num2plot} random samples out of {len(obs)} total samples'
-    fig, axs = plt.subplots(num2plot, figsize=(19, 10))
+    fig, axs = plt.subplots(num2plot, figsize=(19, 10), squeeze=False)
     keys = list(obs.keys())
     for i in range(num2plot):
         k = np.random.randint(len(obs))
         states4plot = states[keys[k]]
         obs4plot = obs[keys[k]]
 
-        ax1 = axs[i]
+        ax1 = axs[i, 0]
 
         color = 'tab:red'
         ax1.set_xlabel('time')

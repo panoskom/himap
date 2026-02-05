@@ -231,7 +231,7 @@ def get_rmse(mean_rul_dict, true_rul_dict):
         A DataFrame containing RMSE values for each trajectory, including the average RMSE.
     """
 
-    df_results = pd.DataFrame(columns=['Name', 'rmse'])
+    rows = []
     for key in mean_rul_dict.keys():
         predicted_values = mean_rul_dict[key]
         true_rul = true_rul_dict[key]
@@ -243,13 +243,13 @@ def get_rmse(mean_rul_dict, true_rul_dict):
 
         # Calculate RMSE
         rmse_pred = np.sqrt(np.mean((predicted_values - true_values) ** 2))
-        new_row = pd.DataFrame([{'Name': key, 'rmse': rmse_pred}])
-        df_results = pd.concat([df_results, new_row], ignore_index=True)
+        rows.append({'Name': key, 'rmse': rmse_pred})
 
+    df_results = pd.DataFrame(rows)
     # Calculate and append the average coverage
     average_rmse = df_results['rmse'].mean()
-    new_row = pd.DataFrame([{'Name': 'Average', 'rmse': average_rmse}])
-    df_results = pd.concat([df_results, new_row], ignore_index=True)
+    rows_with_avg = rows + [{'Name': 'Average', 'rmse': average_rmse}]
+    df_results = pd.DataFrame(rows_with_avg)
     return df_results
 
 
@@ -271,22 +271,27 @@ def get_coverage(upper_bound_dict, lower_bound_dict, true_rul_dict):
     df_results : pd.DataFrame
         A DataFrame containing coverage values for each trajectory, including the average coverage.
     """
-    df_results = pd.DataFrame(columns=['Name', 'coverage'])
+    rows = []
     for key in upper_bound_dict.keys():
         upper_bounds = upper_bound_dict[key]
         lower_bounds = lower_bound_dict[key]
         true_values = list(range(true_rul_dict[key], -1, -1))
-        # Count the number of true values within the bounds
-        count_within_bounds = sum(
-            l <= t <= u for t, l, u in zip(true_values, lower_bounds, upper_bounds)
-        )
-        cov = count_within_bounds / len(true_values)
-        new_row = pd.DataFrame([{'Name': key, 'coverage': cov}])
-        df_results = pd.concat([df_results, new_row], ignore_index=True)
+        # Guard against empty true_values (RUL=0)
+        if len(true_values) == 0:
+            cov = 0.0
+        else:
+            # Count the number of true values within the bounds
+            count_within_bounds = sum(
+                l <= t <= u for t, l, u in zip(true_values, lower_bounds, upper_bounds)
+            )
+            cov = count_within_bounds / len(true_values)
+        rows.append({'Name': key, 'coverage': cov})
+
+    df_results = pd.DataFrame(rows)
     # Calculate and append the average coverage
     average_coverage = df_results['coverage'].mean()
-    new_row = pd.DataFrame([{'Name': 'Average', 'coverage': average_coverage}])
-    df_results = pd.concat([df_results, new_row], ignore_index=True)
+    rows_with_avg = rows + [{'Name': 'Average', 'coverage': average_coverage}]
+    df_results = pd.DataFrame(rows_with_avg)
     return df_results
 
 
@@ -329,20 +334,20 @@ def get_wsu(upper_bound_dict, lower_bound_dict):
     df_results : pd.DataFrame
         A DataFrame containing WSU values for each trajectory, including the average WSU.
     """
-    df_results = pd.DataFrame(columns=['Name', 'wsu'])
+    rows = []
     for key in upper_bound_dict.keys():
         upper_bounds = upper_bound_dict[key]
         lower_bounds = lower_bound_dict[key]
         area_upper = calculate_area_weighted_by_time(range(len(upper_bounds)), upper_bounds)
         area_lower = calculate_area_weighted_by_time(range(len(lower_bounds)), lower_bounds)
         area_wsu = area_upper - area_lower
-        new_row = pd.DataFrame([{'Name': key, 'wsu': area_wsu}])
-        df_results = pd.concat([df_results, new_row], ignore_index=True)
+        rows.append({'Name': key, 'wsu': area_wsu})
 
+    df_results = pd.DataFrame(rows)
     # Calculate and append the average coverage
     average_wsu = df_results['wsu'].mean()
-    new_row = pd.DataFrame([{'Name': 'Average', 'wsu': average_wsu}])
-    df_results = pd.concat([df_results, new_row], ignore_index=True)
+    rows_with_avg = rows + [{'Name': 'Average', 'wsu': average_wsu}]
+    df_results = pd.DataFrame(rows_with_avg)
     return df_results
 
 
@@ -546,6 +551,8 @@ def calculate_cdf(pmf, confidence_level):
     -------
     lower_value : int
         The index corresponding to the lower percentile.
+    upper_value : int
+        The index corresponding to the upper percentile.
     """
     cdf = np.cumsum(pmf)
     # Calculate the lower and upper percentiles
